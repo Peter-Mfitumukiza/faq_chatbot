@@ -1,3 +1,4 @@
+import utils.session
 import openai
 import json
 from pinecone import Pinecone, ServerlessSpec
@@ -60,7 +61,37 @@ def get_answer(user_query):
     # Extract the best match
     if search_results["matches"]:
         best_match = search_results["matches"][0]["metadata"]
-        return best_match["answer"]
+        
+        retrieved_answer = best_match["answer"]
+
+        # Prepare a conversation that includes the user query and the retrieved context
+        messages = [
+            {"role": "system", "content": "You are a highly qualified and experienced food delivery app customer support expert. You are the best at answering customers queries."},
+            {"role": "user", "content": (
+                f"User question: {user_query}\n\n"
+                f"Context: {retrieved_answer}\n\n"
+                "Please provide a concise, helpful, and relevant answer and a step by step guide where applicable."
+            )}
+        ]
+        
+        # Generate the answer using the Chat Completion API
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",  # Or "gpt-4" if available
+            messages=messages,
+            response_format={
+                "type": "text"
+            },
+            temperature=0,
+            max_completion_tokens=2048,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+        )
+            
+        answer_text = response.choices[0].message.content
+        
+        return answer_text
+    
     else:
         return "Sorry, I don't have an answer to that question."
 
